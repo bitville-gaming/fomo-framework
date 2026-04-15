@@ -18,6 +18,16 @@ class Http
     protected array $config = [];
     protected array $MPCache = [];
 
+    /**
+     * Incomplete TCP segments per connection (see TCP packet boundary / stream reassembly).
+     * Same $fd stays on the same worker unless dispatch_mode is 3.
+     * @link https://wiki.swoole.com/en/#/server/events?id=onreceive
+     * @link https://wiki.swoole.com/en/#/learn?id=tcp-packet-boundary-issue
+     *
+     * @var array<int, string>
+     */
+    protected array $tcpBuffers = [];
+
     public function createServer(): self
     {
         $this->server = new Server(
@@ -27,10 +37,14 @@ class Http
             config('server.sockType')
         );
 
-        $this->server->set(array_merge(config('server.additional') , ['enable_coroutine' => false]));
+        $this->server->set(array_merge(config('server.additional'), [
+            'enable_coroutine' => false,
+            'open_http_protocol' => true,
+        ]));
 
         $this->server->on('workerStart', [$this, 'onWorkerStart']);
         $this->server->on('receive', [$this, 'onReceive']);
+        $this->server->on('close', [$this, 'onClose']);
 
         return $this;
     }
@@ -66,7 +80,129 @@ class Http
         $this->runServices($server);
     }
 
+    public function onClose(Server $server, int $fd): void
+    {
+        unset($this->tcpBuffers[$fd]);
+    }
+
     public function onReceive(Server $server, $fd, $from_id, $data): void
+    {
+        $maxPackage = (int) (config('server.additional.package_max_length') ?? 8 * 1024 * 1024);
+        $this->tcpBuffers[$fd] = ($this->tcpBuffers[$fd] ?? '') . $data;
+
+        if (\strlen($this->tcpBuffers[$fd]) > $maxPackage) {
+            unset($this->tcpBuffers[$fd]);
+            try {
+                $server->send($fd, "HTTP/1.1 413 Payload Too Large\r\nConnection: close\r\nContent-Length: 0\r\n\r\n");
+            } catch (\Throwable) {
+            }
+            $server->close($fd);
+
+            return;
+        }
+
+        while (($full = $this->takeNextCompleteHttpMessage($fd)) !== null) {
+            $this->dispatchHttpMessage($server, $fd, $full);
+        }
+    }
+
+    /**
+     * Reassemble one HTTP/1.x message from the per-fd buffer (headers + entity body).
+     * Supports Content-Length and chunked transfer coding.
+     */
+    protected function takeNextCompleteHttpMessage(int $fd): ?string
+    {
+        if (!isset($this->tcpBuffers[$fd])) {
+            return null;
+        }
+
+        $buf = &$this->tcpBuffers[$fd];
+        $headerEnd = \strpos($buf, "\r\n\r\n");
+        if ($headerEnd === false) {
+            return null;
+        }
+
+        $headersRaw = \substr($buf, 0, $headerEnd);
+        $bodyStart = $headerEnd + 4;
+        $chunked = (bool) \preg_match('/^Transfer-Encoding\s*:\s*(?:[^,\r\n]+,\s*)*chunked\b/im', $headersRaw)
+            || (bool) \preg_match('/\r\nTransfer-Encoding\s*:\s*(?:[^,\r\n]+,\s*)*chunked\b/im', $headersRaw);
+
+        if ($chunked) {
+            $end = $this->findChunkedHttpMessageEnd($buf, $bodyStart);
+            if ($end === null) {
+                return null;
+            }
+            $message = \substr($buf, 0, $end);
+            $buf = \substr($buf, $end);
+
+            return $message;
+        }
+
+        if (\preg_match('/\bContent-Length[\x09\x20]*:[\x09\x20]*(\d+)/i', $headersRaw, $m)) {
+            $contentLength = (int) $m[1];
+            $total = $bodyStart + $contentLength;
+            if (\strlen($buf) < $total) {
+                return null;
+            }
+            $message = \substr($buf, 0, $total);
+            $buf = \substr($buf, $total);
+
+            return $message;
+        }
+
+        $message = \substr($buf, 0, $bodyStart);
+        $buf = \substr($buf, $bodyStart);
+
+        return $message;
+    }
+
+    /**
+     * @return int|null byte offset immediately after the full HTTP message (chunked) in $buf
+     */
+    protected function findChunkedHttpMessageEnd(string $buf, int $offset): ?int
+    {
+        $len = \strlen($buf);
+        $pos = $offset;
+
+        while (true) {
+            $crlf = \strpos($buf, "\r\n", $pos);
+            if ($crlf === false) {
+                return null;
+            }
+
+            $line = \substr($buf, $pos, $crlf - $pos);
+            $semi = \strpos($line, ';');
+            $hexPart = $semi === false ? $line : \substr($line, 0, $semi);
+            $hexPart = \ltrim(\strtolower($hexPart), " \t");
+            if ($hexPart === '' || !\ctype_xdigit($hexPart)) {
+                return null;
+            }
+
+            $chunkSize = \hexdec($hexPart);
+            $chunkDataStart = $crlf + 2;
+
+            if ($chunkSize > 0) {
+                if ($len < $chunkDataStart + $chunkSize + 2) {
+                    return null;
+                }
+                if (\substr($buf, $chunkDataStart + $chunkSize, 2) !== "\r\n") {
+                    return null;
+                }
+                $pos = $chunkDataStart + $chunkSize + 2;
+
+                continue;
+            }
+
+            $trailerEnd = \strpos($buf, "\r\n\r\n", $chunkDataStart);
+            if ($trailerEnd === false) {
+                return null;
+            }
+
+            return $trailerEnd + 4;
+        }
+    }
+
+    protected function dispatchHttpMessage(Server $server, int $fd, string $data): void
     {
         try {
             $this->request->setBC($data, $fd);
@@ -133,7 +269,7 @@ class Http
             } else {
                 $server->send($fd, (new Handler())->notAllowedHttpException($this->request));
             }
-            
+
         } catch (\Throwable|\Exception $e) {
             $server->send($fd, (new Handler())->internalServerException($e, $this->request));
         }
