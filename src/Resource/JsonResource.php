@@ -15,9 +15,9 @@ class JsonResource
 
     protected array $meta = [];
 
-    protected ?int $perPage = null;
+    protected ??int $perPage = null;
 
-    public function __construct(Collection|Paginator|stdClass|array|null $data , int $perPage = null)
+    public function __construct(Collection|Paginator|stdClass|array|null $data , ?int $perPage = null)
     {
         if (is_array($data)){
             $data = $this->arrayToCollection($data);

@@ -40,7 +40,7 @@ class Parser
         return true;
     }
 
-    protected function parseSegment(string $string, int $min, int $max, int $start = null): array
+    protected function parseSegment(string $string, int $min, int $max, ?int $start = null): array
     {
         if ($start === null || $start < $min) {
             $start = $min;

@@ -10,7 +10,7 @@ use Fomo\Elasticsearch\Elasticsearch as ElasticsearchDriver;
 
 class Elasticsearch
 {
-    public function boot(Server $server = null, Request $request = null): void
+    public function boot(?Server $server = null, ?Request $request = null): void
     {
         try {
             ElasticsearchDriver::setInstance();

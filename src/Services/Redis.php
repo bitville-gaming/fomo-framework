@@ -9,7 +9,7 @@ use Fomo\Request\Request;
 
 class Redis
 {
-    public function boot(Server $server = null, Request $request = null): void
+    public function boot(?Server $server = null, ?Request $request = null): void
     {
         try {
             RedisDriver::setInstance();
