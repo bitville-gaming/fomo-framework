@@ -8,6 +8,13 @@ class Auth
 {
     protected static ?self $instance = null;
 
+    public $userInfo;
+    public $accountInfo;
+    public $timezone;
+    public $territory;
+    public $region;
+    public $regionCode;
+
     public function __construct(
         protected ?stdClass $user = null
     ){}
