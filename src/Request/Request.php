@@ -117,8 +117,12 @@ class Request
         }
 
         $contentType = $this->header('content-type', '');
-        if ($contentType == 'application/vnd.api+json' || $contentType = 'application/json') {
+        if (\str_contains(\strtolower($contentType), 'json')) {
             $posts = \json_decode($body, true);
+
+            if (!\is_array($posts)) {
+                $posts = [];
+            }
         } else {
             \parse_str($body, $posts);
         }
