@@ -6,7 +6,7 @@ use Fomo\Redis\Redis;
 
 class Cache
 {
-    public function get(string $key , $default = null , int $expire = null)
+    public function get(string $key , $default = null , ?int $expire = null)
     {
         if (is_null($default)){
             return $this->getByKey($key);
@@ -23,7 +23,7 @@ class Cache
         return $this->getByKey($key);
     }
 
-    public function put(string $key , $value , int $expire = null): void
+    public function put(string $key , $value , ?int $expire = null): void
     {
         $this->setByKey($key , $value , $expire);
     }
@@ -72,7 +72,7 @@ class Cache
         $this->deleteByKey($key);
     }
 
-    public function store(string $key , $value , int $expire = null): void
+    public function store(string $key , $value , ?int $expire = null): void
     {
         if (! $this->has($key)){
             if (is_callable($value)){
@@ -93,7 +93,7 @@ class Cache
         return json_decode(Redis::getInstance()->get($key));
     }
 
-    protected function setByKey(string $key , $value , int $expire = null): void
+    protected function setByKey(string $key , $value , ?int $expire = null): void
     {
         if (is_null($expire)){
             Redis::getInstance()->set($key , json_encode($value));

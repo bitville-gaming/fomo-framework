@@ -12,42 +12,42 @@ use Fomo\Redis\Redis;
 use Fomo\Cache\Cache;
 
 if (! function_exists('basePath')) {
-    function basePath(string $path = null): string
+    function basePath(?string $path = null): string
     {
         return realpath(PROJECT_PATH) . "/$path";
     }
 }
 
 if (! function_exists('appPath')) {
-    function appPath(string $path = null): string
+    function appPath(?string $path = null): string
     {
         return basePath("app/$path");
     }
 }
 
 if (! function_exists('configPath')) {
-    function configPath(string $path = null): string
+    function configPath(?string $path = null): string
     {
         return basePath("config/$path");
     }
 }
 
 if (! function_exists('storagePath')) {
-    function storagePath(string $path = null): string
+    function storagePath(?string $path = null): string
     {
         return basePath("storage/$path");
     }
 }
 
 if (! function_exists('languagePath')) {
-    function languagePath(string $path = null): string
+    function languagePath(?string $path = null): string
     {
         return basePath("language/$path");
     }
 }
 
 if (! function_exists('databasePath')) {
-    function databasePath(string $path = null): string
+    function databasePath(?string $path = null): string
     {
         return basePath("database/$path");
     }
