@@ -9,7 +9,7 @@ use Fomo\Request\Request;
 
 class Database
 {
-    public function boot(Server $server = null, Request $request = null): void
+    public function boot(?Server $server = null, ?Request $request = null): void
     {
         $capsule = new Capsule();
 

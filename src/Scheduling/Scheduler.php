@@ -354,7 +354,7 @@ class Scheduler
         Kernel::getInstance()->tasks[$this->task] = $this->cron;
     }
 
-    public function weeklyOn(int $day , int $hour = null): void
+    public function weeklyOn(int $day , ?int $hour = null): void
     {
         if ($day < 0){
             $day = 0;
@@ -388,7 +388,7 @@ class Scheduler
         Kernel::getInstance()->tasks[$this->task] = $this->cron;
     }
 
-    public function monthlyOn(int $day , int $hour = null): void
+    public function monthlyOn(int $day , ?int $hour = null): void
     {
         if ($day < 0){
             $day = 0;
@@ -415,7 +415,7 @@ class Scheduler
         Kernel::getInstance()->tasks[$this->task] = $this->cron;
     }
 
-    public function twiceMonthly(int $firstDay , int $secondDay , int $hour = null): void
+    public function twiceMonthly(int $firstDay , int $secondDay , ?int $hour = null): void
     {
         if ($firstDay < 1) $firstDay = 1;
 

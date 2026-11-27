@@ -45,7 +45,7 @@ class Http
         return $this;
     }
 
-    public function attach(array|string $name, string $contents = '', string $filename = null, array $headers = []): self
+    public function attach(array|string $name, string $contents = '', ?string $filename = null, array $headers = []): self
     {
         if (is_array($name)) {
             foreach ($name as $file) {

@@ -76,9 +76,9 @@ class Inserter
             'string' => (string) call_user_func_array([$class, $method], $args),
             'array' => (array) call_user_func_array([$class, $method], $args),
             'float' => (float) call_user_func_array([$class, $method], $args),
-            'integer' => (integer) call_user_func_array([$class, $method], $args),
-            'double' => (double) call_user_func_array([$class, $method], $args),
-            'boolean' => (boolean) call_user_func_array([$class, $method], $args),
+            'integer' => (int) call_user_func_array([$class, $method], $args),
+            'double' => (float) call_user_func_array([$class, $method], $args),
+            'boolean' => (bool) call_user_func_array([$class, $method], $args),
             'bool' => (bool) call_user_func_array([$class, $method], $args),
             'object' => (object) call_user_func_array([$class, $method], $args),
         };
